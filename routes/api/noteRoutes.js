@@ -23,16 +23,12 @@ router.post('/', async (req, res) => {
   result.push(req.body);
   await writeToDB(result);
 
-  console.log('Database updated!');
-
   res.status(200).json({ message: "OK" });
 });
 
 // READ
 router.get('/', async (req, res) => {
   const result = await readFromDB()
-
-  console.log('Got all note data!');
 
   res.status(200).json(result);
 });
@@ -65,17 +61,16 @@ router.delete('/:id', async (req, res) => {
   const noteId = req.params.id;
 
   try {
-    const dbObj = await readFromDB()
-    
+    const dbObj = await readFromDB();
+
     for (let i = 0; i < dbObj.length; i++) {
       if (dbObj[i].id == noteId) {
-        dbObj.splice(noteId, 1);
+        dbObj.splice(i, 1);
         await writeToDB(dbObj);
         res.status(200).json({ message: "Successfully deleted note with ID: " + noteId });
+        return;
       }
     }
-
-    res.status(404).json({ message: "Note not found with ID: " + noteId });
   } catch (err) {
     res.status(500).json({ message: "Server error... Couldn't delete note." });
   }

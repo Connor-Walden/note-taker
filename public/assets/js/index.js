@@ -1,3 +1,16 @@
+
+class indexMachine {
+  constructor() {
+    this.index = 0;
+  }
+
+  getIndex() {
+    return this.index++;
+  }
+}
+
+const im = new indexMachine()
+
 let noteTitle;
 let noteText;
 let saveNoteBtn;
@@ -65,14 +78,21 @@ const renderActiveNote = () => {
 };
 
 const handleNoteSave = () => {
-  const newNote = {
-    title: noteTitle.value,
-    text: noteText.value,
-  };
-  saveNote(newNote).then(() => {
-    getAndRenderNotes();
-    renderActiveNote();
+  getNotes().then(async (notes) => {
+    let note = await notes.json();
+    let note_id = note.length;
+    console.log(note_id)
+    const newNote = {
+      id: note_id,
+      title: noteTitle.value,
+      text: noteText.value,
+    };
+    saveNote(newNote).then(() => {
+      getAndRenderNotes();
+      renderActiveNote();
+    });
   });
+  
 };
 
 // Delete the clicked note
