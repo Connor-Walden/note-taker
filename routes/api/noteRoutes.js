@@ -1,19 +1,27 @@
 const router = require('express').Router();
+const { SlowBuffer } = require('buffer');
 const fs = require('fs');
+const path = require('path');
 
 // Write a object to the database file.
 async function writeToDB(content) {
-  await fs.writeFileSync('/db/db.json', JSON.stringify(content));
+  try {
+    await fs.writeFileSync(path.join(__dirname, '../../db/db.json'), JSON.stringify(content));
+  } catch(err) {
+    console.log('Could not write to file :(' + err);  
+  }
 }
 
 // Read a database file to a object.
 async function readFromDB() {
-  return await JSON.parse(fs.readFileSync('/db/db.json'));
+  return await JSON.parse(fs.readFileSync(path.join(__dirname, '../../db/db.json')));
 }
 
 // CREATE
-router.post('/notes', async (req, res) => {
-  await writeToDB(req.body)
+router.post('/', async (req, res) => {
+  const result = await readFromDB()
+  result.push(req.body);
+  await writeToDB(result);
 
   console.log('Database updated!');
 
@@ -21,42 +29,56 @@ router.post('/notes', async (req, res) => {
 });
 
 // READ
-router.get('/notes', async (req, res) => {
+router.get('/', async (req, res) => {
   const result = await readFromDB()
 
   console.log('Got all note data!');
 
-  res.status(200).json(JSON.parse(result));
+  res.status(200).json(result);
 });
 
 // UPDATE
-router.post('/notes/:id', async (req, res) => {
+router.post('/:id', async (req, res) => {
   const noteId = req.params.id;
 
   try {
-    const dbObj = readFromDB()
-    dbObj[noteId] = req.body;
-    await writeToDB(dbObj);
-  } catch (err) {
-    res.status(500).json({ message: "Server error... Couldn't update note.", body: req.body });
-  }
+    const dbObj = await readFromDB()
 
-  res.status(200).send("Success!");
+    for (let i = 0; i < dbObj.length; i++) {
+      if (dbObj[i].id == noteId) {
+        dbObj[i].title = req.body.title;
+        dbObj[i].text = req.body.text;
+
+        await writeToDB(dbObj);
+        res.status(200).json({ message: "Successfully updated note with ID: " + noteId });
+      }
+    }
+
+    res.status(404).json({ message: "Note not found with ID: " + noteId });
+  } catch (err) {
+    res.status(500).json({ message: "Server error... Couldn't update note.", err: err });
+  }
 });
 
 // DELETE
-router.delete('/notes/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   const noteId = req.params.id;
 
   try {
-    const dbObj = readFromDB()
-    const newArr = remove(dbObj[noteId]);
-    await writeToDB(newArr);
+    const dbObj = await readFromDB()
+    
+    for (let i = 0; i < dbObj.length; i++) {
+      if (dbObj[i].id == noteId) {
+        dbObj.splice(noteId, 1);
+        await writeToDB(dbObj);
+        res.status(200).json({ message: "Successfully deleted note with ID: " + noteId });
+      }
+    }
+
+    res.status(404).json({ message: "Note not found with ID: " + noteId });
   } catch (err) {
     res.status(500).json({ message: "Server error... Couldn't delete note." });
   }
-
-  res.status(200).json(newArr);
 });
 
 module.exports = router;
